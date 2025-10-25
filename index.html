@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Figure Generator - AI Konversi Gambar</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Poppins',sans-serif}
+body{background:radial-gradient(circle at top,#0a0a0a,#000);color:#fff;overflow-x:hidden;min-height:100vh;text-align:center}
+.container{max-width:900px;margin:0 auto;padding:40px 20px}
+h1{font-size:2.5em;margin-bottom:10px}
+p.subtitle{color:#aaa;margin-bottom:30px}
+.upload-box{border:2px dashed #555;padding:40px;border-radius:20px;background:rgba(255,255,255,.02);cursor:pointer;transition:.3s}
+.upload-box:hover{border-color:#ff5b5b;background:rgba(255,255,255,.05)}
+.upload-content p{color:#ccc}
+.preview img{width:100%;border-radius:15px;margin-top:20px}
+button{background:linear-gradient(45deg,#ff3b3b,#ff7b00);border:none;color:white;padding:12px 35px;border-radius:30px;cursor:pointer;font-weight:600;margin-top:20px;transition:.3s}
+button:disabled{opacity:.5;cursor:not-allowed}
+.loading{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;color:#fff;font-size:1.1em}
+.loading-spinner{border:5px solid rgba(255,255,255,.2);border-top:5px solid #ff3b3b;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin-bottom:15px}
+@keyframes spin{100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Figure Generator</h1>
+  <p class="subtitle">Ubah gambar Lu menjadi versi figure realistis</p>
+
+  <div class="upload-box" id="uploadBox">
+    <input type="file" id="fileInput" accept="image/*" hidden>
+    <div class="upload-content" id="uploadContent">
+      <h3>Letakkan gambar di sini</h3>
+      <p>atau klik untuk memilih file</p>
+      <small>Mendukung: JPG, PNG, WEBP</small>
+    </div>
+  </div>
+
+  <div class="preview" id="previewContainer" style="display:none;">
+    <img id="previewImage" src="">
+    <button id="generateBtn">Generate Figure</button>
+  </div>
+
+  <p style="margin-top:40px;color:#888;">Created by DikaMoods</p>
+</div>
+
+<div class="loading" id="loading" style="display:none;">
+  <div class="loading-spinner"></div>
+  <p>AI sedang membuat figure Lu...</p>
+</div>
+
+<script>
+const fileInput=document.getElementById("fileInput");
+const uploadBox=document.getElementById("uploadBox");
+const previewContainer=document.getElementById("previewContainer");
+const previewImage=document.getElementById("previewImage");
+const generateBtn=document.getElementById("generateBtn");
+const loading=document.getElementById("loading");
+
+let uploadedFile=null;
+
+uploadBox.addEventListener("click",()=>fileInput.click());
+fileInput.addEventListener("change",e=>{
+  const file=e.target.files[0];
+  if(file){
+    uploadedFile=file;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      previewImage.src=e.target.result;
+      previewContainer.style.display="block";
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+generateBtn.addEventListener("click",async()=>{
+  if(!uploadedFile)return alert("Pilih gambar dulu!");
+  loading.style.display="flex";
+  generateBtn.disabled=true;
+
+  const reader=new FileReader();
+  reader.onloadend=async()=>{
+    const base64Image=reader.result.split(",")[1];
+    try{
+      const res=await fetch("/api/generate",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({imageBase64:base64Image,mimeType:uploadedFile.type})
+      });
+      const data=await res.json();
+      if(data.image){
+        previewImage.src=`data:image/png;base64,${data.image}`;
+      }else{
+        alert("Gagal menghasilkan gambar!");
+        console.error(data.error);
+      }
+    }catch(err){
+      alert("Terjadi kesalahan: "+err.message);
+      console.error(err);
+    }finally{
+      loading.style.display="none";
+      generateBtn.disabled=false;
+    }
+  };
+  reader.readAsDataURL(uploadedFile);
+});
+</script>
+</body>
+</html>
